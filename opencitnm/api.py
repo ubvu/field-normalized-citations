@@ -1,14 +1,29 @@
 from pyalex import Works
+import numpy as np
+import warnings
 
 
-class Normalizer(dict):
+class Normalizer():
     """Normalizer object."""
 
     def __init__(self):
 
         self.field_averages = {}
+        self.mean_type = 'h'
 
-    def normalize_citations(self, w):
+    def normalize_citations(self, w: Works, mean_type: str ='h'):
+        """
+        
+        Parameters
+        ----------
+        mean_type : {'h', 'a', 'g'}, default 'h'
+            The type of mean to calculate field averages (harmonic, arithmetic, geometric).
+        """
+        if mean_type not in ['h', 'a', 'g']:
+            warnings.warn('Mean type does not exist. Possible values are "h", "a", "g". Using default: "h" (harmonic)')
+            self.mean_type = 'h'
+        else:
+            self.mean_type = mean_type
         if isinstance(w, list):
             return self._normalize_citations_multi(w)
         else:
@@ -40,7 +55,15 @@ class Normalizer(dict):
                                 self.field_averages[lookup_key] = field_average
                             fa.append(field_average)
                         # normalize
-                        w['cited_by_count_normalized'] = citations / self._calculate_harmonic_mean(fa)                               
+                        match self.mean_type:
+                            case 'h':
+                                average = self._calculate_harmonic_mean(fa)
+                            case 'a':
+                                average = self._calculate_arithmetic_mean(fa)
+                            case 'g':
+                                average = self._calculate_geometric_mean(fa)
+                                
+                        w['cited_by_count_normalized'] = round(citations / average, 2)                               
         return w
 
 
@@ -68,5 +91,11 @@ class Normalizer(dict):
 
     def _calculate_harmonic_mean(self, fa):
         return len(fa) / sum([1/a for a in fa])
+    
+    def _calculate_arithmetic_mean(self, fa):
+        return sum(fa) / len(fa)
+    
+    def _calculate_geometric_mean(self, fa):
+        return np.prod(fa)**(1/len(fa))
 
         
